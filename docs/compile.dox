@@ -200,9 +200,6 @@ the library.
 
 @subsubsection compile_options_osx OS X specific CMake options
 
-`GLFW_USE_CHDIR` determines whether `glfwInit` changes the current
-directory of bundled applications to the `Contents/Resources` directory.
-
 `GLFW_USE_MENUBAR` determines whether the first call to
 `glfwCreateWindow` sets up a minimal menu bar.
 
@@ -261,16 +258,6 @@ extensions can be enabled:
 
  - `_GLFW_HAS_XF86VM` to use Xxf86vm as a fallback when RandR gamma is broken
  (recommended)
-
-If you are using the Cocoa window creation API, the following options are
-available:
-
- - `_GLFW_USE_CHDIR` to `chdir` to the `Resources` subdirectory of the
-   application bundle during @ref glfwInit (recommended)
- - `_GLFW_USE_MENUBAR` to create and populate the menu bar when the first window
-   is created (recommended)
- - `_GLFW_USE_RETINA` to have windows use the full resolution of Retina displays
-   (recommended)
 
 @note None of the @ref build_macros may be defined during the compilation of
 GLFW.  If you define any of these in your build files, make sure they are not

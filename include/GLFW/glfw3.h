@@ -619,6 +619,10 @@ extern "C" {
 #define GLFW_NO_WINDOW_CONTEXT      0x0001000A
 /*! @} */
 
+#define GLFW_OSX_CHDIR              0x00012001
+#define GLFW_OSX_MENUBAR            0x00012002
+#define GLFW_OSX_RETINA             0x00012003
+
 #define GLFW_FOCUSED                0x00020001
 #define GLFW_ICONIFIED              0x00020002
 #define GLFW_RESIZABLE              0x00020003
@@ -1269,6 +1273,24 @@ GLFWAPI int glfwInit(void);
  *  @ingroup init
  */
 GLFWAPI void glfwTerminate(void);
+
+/*! @brief Sets the specified init hint to the desired value.
+ *
+ *  @param[in] hint The [init hint](@ref init_hints) to set.
+ *  @param[in] value The new value of the init hint.
+ *
+ *  @remarks This function may be called before @ref glfwInit.
+ *
+ *  @par Thread Safety
+ *  This function may only be called from the main thread.
+ *
+ *  @sa glfwInit
+ *
+ *  @since Added in GLFW 3.2.
+ *
+ *  @ingroup init
+ */
+GLFWAPI void glfwInitHint(int hint, int value);
 
 /*! @brief Retrieves the version of the GLFW library.
  *

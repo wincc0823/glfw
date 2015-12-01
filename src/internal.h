@@ -49,6 +49,7 @@
 
 typedef int GLFWbool;
 
+typedef struct _GLFWinithints   _GLFWinithints;
 typedef struct _GLFWwndconfig   _GLFWwndconfig;
 typedef struct _GLFWctxconfig   _GLFWctxconfig;
 typedef struct _GLFWfbconfig    _GLFWfbconfig;
@@ -235,6 +236,15 @@ typedef VkResult (APIENTRY * PFN_vkEnumerateInstanceExtensionProperties)(const c
 //========================================================================
 // Platform-independent structures
 //========================================================================
+
+/*! @brief Init hints.
+ */
+struct _GLFWinithints
+{
+    int menubar;
+    int chdir;
+    int retina;
+};
 
 /*! @brief Window configuration.
  *
@@ -436,6 +446,8 @@ struct _GLFWlibrary
         _GLFWctxconfig  context;
         int             refreshRate;
     } hints;
+
+    _GLFWinithints      init;
 
     _GLFWcursor*        cursorListHead;
 

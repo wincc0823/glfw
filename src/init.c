@@ -33,19 +33,20 @@
 #include <stdarg.h>
 
 
-// The three global variables below comprise all global data in GLFW.
+// The global variables below comprise all global data in GLFW.
 // Any other global variable is a bug.
 
 // Global state shared between compilation units of GLFW
 // These are documented in internal.h
 //
-GLFWbool _glfwInitialized = GLFW_FALSE;
+GLFWbool _glfwInitialized;
 _GLFWlibrary _glfw;
 
-// This is outside of _glfw so it can be initialized and usable before
-// glfwInit is called, which lets that function report errors
+// These are outside of _glfw so they can be used before initialization and
+// after termination
 //
-static GLFWerrorfun _glfwErrorCallback = NULL;
+static GLFWerrorfun _glfwErrorCallback;
+static _GLFWinithints _glfwInitHints;
 
 
 // Returns a generic string representation of the specified error
@@ -123,6 +124,7 @@ GLFWAPI int glfwInit(void)
         return GLFW_TRUE;
 
     memset(&_glfw, 0, sizeof(_glfw));
+    _glfw.init = _glfwInitHints;
 
     if (!_glfwPlatformInit())
     {
@@ -175,6 +177,25 @@ GLFWAPI void glfwTerminate(void)
 
     memset(&_glfw, 0, sizeof(_glfw));
     _glfwInitialized = GLFW_FALSE;
+}
+
+GLFWAPI void glfwInitHint(int hint, int value)
+{
+    switch (hint)
+    {
+        case GLFW_OSX_CHDIR:
+            _glfwInitHints.chdir = value;
+            break;
+        case GLFW_OSX_MENUBAR:
+            _glfwInitHints.menubar = value;
+            break;
+        case GLFW_OSX_RETINA:
+            _glfwInitHints.retina = value;
+            break;
+        default:
+            _glfwInputError(GLFW_INVALID_ENUM, "Invalid init hint %i", hint);
+            break;
+    }
 }
 
 GLFWAPI void glfwGetVersion(int* major, int* minor, int* rev)
