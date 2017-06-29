@@ -1,8 +1,8 @@
 //========================================================================
-// GLFW 3.2 - www.glfw.org
+// GLFW 3.3 - www.glfw.org
 //------------------------------------------------------------------------
 // Copyright (c) 2002-2006 Marcus Geelnard
-// Copyright (c) 2006-2016 Camilla Berglund <elmindreda@glfw.org>
+// Copyright (c) 2006-2016 Camilla Löwy <elmindreda@glfw.org>
 //
 // This software is provided 'as-is', without any express or implied
 // warranty. In no event will the authors be held liable for any damages
@@ -34,56 +34,6 @@
 #include <stdio.h>
 
 
-// Parses the client API version string and extracts the version number
-//
-static GLFWbool parseVersionString(int* api, int* major, int* minor, int* rev)
-{
-    int i;
-    _GLFWwindow* window;
-    const char* version;
-    const char* prefixes[] =
-    {
-        "OpenGL ES-CM ",
-        "OpenGL ES-CL ",
-        "OpenGL ES ",
-        NULL
-    };
-
-    *api = GLFW_OPENGL_API;
-
-    window = _glfwPlatformGetCurrentContext();
-
-    version = (const char*) window->context.GetString(GL_VERSION);
-    if (!version)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Client API version string retrieval is broken");
-        return GLFW_FALSE;
-    }
-
-    for (i = 0;  prefixes[i];  i++)
-    {
-        const size_t length = strlen(prefixes[i]);
-
-        if (strncmp(version, prefixes[i], length) == 0)
-        {
-            version += length;
-            *api = GLFW_OPENGL_ES_API;
-            break;
-        }
-    }
-
-    if (!sscanf(version, "%d.%d.%d", major, minor, rev))
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "No version found in client API version string");
-        return GLFW_FALSE;
-    }
-
-    return GLFW_TRUE;
-}
-
-
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
@@ -91,10 +41,11 @@ static GLFWbool parseVersionString(int* api, int* major, int* minor, int* rev)
 GLFWbool _glfwIsValidContextConfig(const _GLFWctxconfig* ctxconfig)
 {
     if (ctxconfig->source != GLFW_NATIVE_CONTEXT_API &&
-        ctxconfig->source != GLFW_EGL_CONTEXT_API)
+        ctxconfig->source != GLFW_EGL_CONTEXT_API &&
+        ctxconfig->source != GLFW_OSMESA_CONTEXT_API)
     {
         _glfwInputError(GLFW_INVALID_ENUM,
-                        "Invalid context creation API %i",
+                        "Invalid context creation API 0x%08X",
                         ctxconfig->source);
         return GLFW_FALSE;
     }
@@ -104,7 +55,7 @@ GLFWbool _glfwIsValidContextConfig(const _GLFWctxconfig* ctxconfig)
         ctxconfig->client != GLFW_OPENGL_ES_API)
     {
         _glfwInputError(GLFW_INVALID_ENUM,
-                        "Invalid client API %i",
+                        "Invalid client API 0x%08X",
                         ctxconfig->client);
         return GLFW_FALSE;
     }
@@ -134,7 +85,7 @@ GLFWbool _glfwIsValidContextConfig(const _GLFWctxconfig* ctxconfig)
                 ctxconfig->profile != GLFW_OPENGL_COMPAT_PROFILE)
             {
                 _glfwInputError(GLFW_INVALID_ENUM,
-                                "Invalid OpenGL profile %i",
+                                "Invalid OpenGL profile 0x%08X",
                                 ctxconfig->profile);
                 return GLFW_FALSE;
             }
@@ -183,7 +134,7 @@ GLFWbool _glfwIsValidContextConfig(const _GLFWctxconfig* ctxconfig)
             ctxconfig->robustness != GLFW_LOSE_CONTEXT_ON_RESET)
         {
             _glfwInputError(GLFW_INVALID_ENUM,
-                            "Invalid context robustness mode %i",
+                            "Invalid context robustness mode 0x%08X",
                             ctxconfig->robustness);
             return GLFW_FALSE;
         }
@@ -195,7 +146,7 @@ GLFWbool _glfwIsValidContextConfig(const _GLFWctxconfig* ctxconfig)
             ctxconfig->release != GLFW_RELEASE_BEHAVIOR_FLUSH)
         {
             _glfwInputError(GLFW_INVALID_ENUM,
-                            "Invalid context release behavior %i",
+                            "Invalid context release behavior 0x%08X",
                             ctxconfig->release);
             return GLFW_FALSE;
         }
@@ -369,27 +320,79 @@ const _GLFWfbconfig* _glfwChooseFBConfig(const _GLFWfbconfig* desired,
 
 GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
 {
-    _GLFWwindow* window = _glfwPlatformGetCurrentContext();
+    int i;
+    _GLFWwindow* window;
+    const char* version;
+    const char* prefixes[] =
+    {
+        "OpenGL ES-CM ",
+        "OpenGL ES-CL ",
+        "OpenGL ES ",
+        NULL
+    };
+
+    window = _glfwPlatformGetTls(&_glfw.contextSlot);
+
+    window->context.source = ctxconfig->source;
+    window->context.client = GLFW_OPENGL_API;
 
     window->context.GetIntegerv = (PFNGLGETINTEGERVPROC)
-        glfwGetProcAddress("glGetIntegerv");
+        window->context.getProcAddress("glGetIntegerv");
     window->context.GetString = (PFNGLGETSTRINGPROC)
-        glfwGetProcAddress("glGetString");
+        window->context.getProcAddress("glGetString");
     if (!window->context.GetIntegerv || !window->context.GetString)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Entry point retrieval is broken");
         return GLFW_FALSE;
     }
 
-    if (!parseVersionString(&window->context.client,
-                            &window->context.major,
-                            &window->context.minor,
-                            &window->context.revision))
+    version = (const char*) window->context.GetString(GL_VERSION);
+    if (!version)
     {
+        if (ctxconfig->client == GLFW_OPENGL_API)
+        {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                            "OpenGL version string retrieval is broken");
+        }
+        else
+        {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                            "OpenGL ES version string retrieval is broken");
+        }
+
         return GLFW_FALSE;
     }
 
-    window->context.source = ctxconfig->source;
+    for (i = 0;  prefixes[i];  i++)
+    {
+        const size_t length = strlen(prefixes[i]);
+
+        if (strncmp(version, prefixes[i], length) == 0)
+        {
+            version += length;
+            window->context.client = GLFW_OPENGL_ES_API;
+            break;
+        }
+    }
+
+    if (!sscanf(version, "%d.%d.%d",
+                &window->context.major,
+                &window->context.minor,
+                &window->context.revision))
+    {
+        if (window->context.client == GLFW_OPENGL_API)
+        {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                            "No version found in OpenGL version string");
+        }
+        else
+        {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                            "No version found in OpenGL ES version string");
+        }
+
+        return GLFW_FALSE;
+    }
 
     if (window->context.major < ctxconfig->major ||
         (window->context.major == ctxconfig->major &&
@@ -402,10 +405,21 @@ GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
         // For API consistency, we emulate the behavior of the
         // {GLX|WGL}_ARB_create_context extension and fail here
 
-        _glfwInputError(GLFW_VERSION_UNAVAILABLE,
-                        "Requested client API version %i.%i, got version %i.%i",
-                        ctxconfig->major, ctxconfig->minor,
-                        window->context.major, window->context.minor);
+        if (window->context.client == GLFW_OPENGL_API)
+        {
+            _glfwInputError(GLFW_VERSION_UNAVAILABLE,
+                            "Requested OpenGL version %i.%i, got version %i.%i",
+                            ctxconfig->major, ctxconfig->minor,
+                            window->context.major, window->context.minor);
+        }
+        else
+        {
+            _glfwInputError(GLFW_VERSION_UNAVAILABLE,
+                            "Requested OpenGL ES version %i.%i, got version %i.%i",
+                            ctxconfig->major, ctxconfig->minor,
+                            window->context.major, window->context.minor);
+        }
+
         return GLFW_FALSE;
     }
 
@@ -416,7 +430,7 @@ GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
         // users as early as possible that their build may be broken
 
         window->context.GetStringi = (PFNGLGETSTRINGIPROC)
-            glfwGetProcAddress("glGetStringi");
+            window->context.getProcAddress("glGetStringi");
         if (!window->context.GetStringi)
         {
             _glfwInputError(GLFW_PLATFORM_ERROR,
@@ -521,7 +535,8 @@ GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
     // Clearing the front buffer to black to avoid garbage pixels left over from
     // previous uses of our bit of VRAM
     {
-        PFNGLCLEARPROC glClear = (PFNGLCLEARPROC) glfwGetProcAddress("glClear");
+        PFNGLCLEARPROC glClear = (PFNGLCLEARPROC)
+            window->context.getProcAddress("glClear");
         glClear(GL_COLOR_BUFFER_BIT);
         window->context.swapBuffers(window);
     }
@@ -563,7 +578,7 @@ GLFWbool _glfwStringInExtensionString(const char* string, const char* extensions
 GLFWAPI void glfwMakeContextCurrent(GLFWwindow* handle)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
-    _GLFWwindow* previous = _glfwPlatformGetCurrentContext();
+    _GLFWwindow* previous = _glfwPlatformGetTls(&_glfw.contextSlot);
 
     _GLFW_REQUIRE_INIT();
 
@@ -586,7 +601,7 @@ GLFWAPI void glfwMakeContextCurrent(GLFWwindow* handle)
 GLFWAPI GLFWwindow* glfwGetCurrentContext(void)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
-    return (GLFWwindow*) _glfwPlatformGetCurrentContext();
+    return _glfwPlatformGetTls(&_glfw.contextSlot);
 }
 
 GLFWAPI void glfwSwapBuffers(GLFWwindow* handle)
@@ -611,7 +626,7 @@ GLFWAPI void glfwSwapInterval(int interval)
 
     _GLFW_REQUIRE_INIT();
 
-    window = _glfwPlatformGetCurrentContext();
+    window = _glfwPlatformGetTls(&_glfw.contextSlot);
     if (!window)
     {
         _glfwInputError(GLFW_NO_CURRENT_CONTEXT, NULL);
@@ -624,12 +639,11 @@ GLFWAPI void glfwSwapInterval(int interval)
 GLFWAPI int glfwExtensionSupported(const char* extension)
 {
     _GLFWwindow* window;
-
     assert(extension != NULL);
 
     _GLFW_REQUIRE_INIT_OR_RETURN(GLFW_FALSE);
 
-    window = _glfwPlatformGetCurrentContext();
+    window = _glfwPlatformGetTls(&_glfw.contextSlot);
     if (!window)
     {
         _glfwInputError(GLFW_NO_CURRENT_CONTEXT, NULL);
@@ -694,7 +708,7 @@ GLFWAPI GLFWglproc glfwGetProcAddress(const char* procname)
 
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
 
-    window = _glfwPlatformGetCurrentContext();
+    window = _glfwPlatformGetTls(&_glfw.contextSlot);
     if (!window)
     {
         _glfwInputError(GLFW_NO_CURRENT_CONTEXT, NULL);

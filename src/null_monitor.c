@@ -1,8 +1,8 @@
 //========================================================================
-// GLFW 3.2 POSIX - www.glfw.org
+// GLFW 3.3 - www.glfw.org
 //------------------------------------------------------------------------
-// Copyright (c) 2002-2006 Marcus Geelnard
-// Copyright (c) 2006-2016 Camilla Berglund <elmindreda@glfw.org>
+// Copyright (c) 2016 Google Inc.
+// Copyright (c) 2006-2016 Camilla Löwy <elmindreda@glfw.org>
 //
 // This software is provided 'as-is', without any express or implied
 // warranty. In no event will the authors be held liable for any damages
@@ -29,40 +29,27 @@
 
 
 //////////////////////////////////////////////////////////////////////////
-//////                       GLFW internal API                      //////
-//////////////////////////////////////////////////////////////////////////
-
-GLFWbool _glfwInitThreadLocalStoragePOSIX(void)
-{
-    if (pthread_key_create(&_glfw.posix_tls.context, NULL) != 0)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "POSIX: Failed to create context TLS");
-        return GLFW_FALSE;
-    }
-
-    _glfw.posix_tls.allocated = GLFW_TRUE;
-    return GLFW_TRUE;
-}
-
-void _glfwTerminateThreadLocalStoragePOSIX(void)
-{
-    if (_glfw.posix_tls.allocated)
-        pthread_key_delete(_glfw.posix_tls.context);
-}
-
-
-//////////////////////////////////////////////////////////////////////////
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-void _glfwPlatformSetCurrentContext(_GLFWwindow* context)
+void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos)
 {
-    pthread_setspecific(_glfw.posix_tls.context, context);
 }
 
-_GLFWwindow* _glfwPlatformGetCurrentContext(void)
+GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* found)
 {
-    return pthread_getspecific(_glfw.posix_tls.context);
+    return NULL;
+}
+
+void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
+{
+}
+
+void _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
+{
+}
+
+void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
+{
 }
 
